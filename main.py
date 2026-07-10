@@ -1,6 +1,7 @@
 import streamlit as st
 from pypdf import PdfReader
 from keywords.keys import job_keywords
+import re
 
 st.title("📄 Resume Analyzer")
 
@@ -17,6 +18,13 @@ if uploaded_file is not None:
             text += page_text + "\n"
 
     st.text_area("Extracted Text", text, height=300)
+
+    email =re.search(r'[A-Za-z0-9]+@[A-Za-z0-9]+\.[A-Za-z]{2,}',text)
+    number = re.search(r'\+91\s?\d{5}[\s+]?\d{5}', text)
+    with st.expander("Show details"):
+        st.write(f"Email:{email.group()}")
+        st.write(f"Contact_number:{number.group()}")
+
 
     st.subheader("Applicable Job Roles")
 
