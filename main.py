@@ -1,34 +1,85 @@
 import streamlit as st
 from pypdf import PdfReader
-from keywords.keys import keywords
+from keywords.keys import job_keywords
 
-st.title("PDF Text Extractor")
+st.title("📄 Resume Analyzer")
 
-uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
+uploaded_file = st.file_uploader("Upload Resume (PDF)", type="pdf")
+
+text = ""
 
 if uploaded_file is not None:
     reader = PdfReader(uploaded_file)
 
-    text = ""
-
     for page in reader.pages:
         page_text = page.extract_text()
-
         if page_text:
-            text += page_text
+            text += page_text + "\n"
+
+    st.text_area("Extracted Text", text, height=300)
+
+    st.subheader("Applicable Job Roles")
+
+    role_scores = {}
+
+    for role, keywords in job_keywords.items():
+        matched = 0
+
+        for keyword in keywords:
+            if keyword.lower() in text.lower():
+                matched += 1
+
+        score = matched / len(keywords) * 100
+        role_scores[role] = score
 
 
-    st.text_area("Extracted Text", text, height=400)
+    best_role = max(role_scores,key = role_scores.get)
 
-st.write("Applicable for job roles")
+    st.success(f"🏆 Best Matching Role: {best_role}")
+    st.metric("Match Score", f"{role_scores[best_role]:.1f}%")
 
-roles = []
-for key, value in keywords.items():
-    for keyword in value:
+
+    st.divider()
+
+    selected_role = st.selectbox(
+        "Select Job Role",
+        list(job_keywords.keys())
+    )
+
+    present_keywords = []
+    missing_keywords = []
+
+    for keyword in job_keywords[selected_role]:
         if keyword.lower() in text.lower():
-            roles.append(key)
-for index,i in enumerate(set(roles),1):
-    st.write(index,".",i)
+            present_keywords.append(keyword)
+        else:
+            missing_keywords.append(keyword)
+
+    ats_score = len(present_keywords) / len(job_keywords[selected_role]) * 100
+
+    st.subheader("ATS Analysis")
+    st.metric("ATS Match", f"{ats_score:.1f}%")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.success("Matched Skills")
+        if present_keywords:
+            for skill in present_keywords:
+                st.write(f"✅ {skill}")
+        else:
+            st.write("No matching skills found.")
+
+    with col2:
+        st.error("Missing Skills")
+        if missing_keywords:
+            for skill in missing_keywords:
+                st.write(f"❌ {skill}")
+        else:
+            st.write("No missing skills.")
+
+
+
     
 
 
