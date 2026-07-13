@@ -3,6 +3,7 @@ from pypdf import PdfReader
 from keywords.keys import job_keywords
 from extracter.extracter import name, email,number
 import re
+from parser.resume_parsing import parser
 
 st.title("📄 Resume Analyzer")
 
@@ -20,10 +21,19 @@ if uploaded_file is not None:
 
     st.text_area("Extracted Text", text, height=300)
 
+    resume_data = parser(text)
+
     with st.expander("Show details"):
         st.write(f"Name:{name(text)}")
         st.write(f"Email:{email(text)}")
         st.write(f"Contact_number:{number(text)}")
+        st.write(resume_data["Name"])
+        st.write(resume_data["Email"])
+        st.write(resume_data["Phone"])
+        st.write(resume_data["Skills"])
+        st.write(resume_data["Projects"])
+
+
 
     st.subheader("Applicable Job Roles")
 
