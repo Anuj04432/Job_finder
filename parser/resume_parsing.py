@@ -8,9 +8,14 @@ def parser(text):
     model = genai.GenerativeModel("gemini-3.5-flash")
 
     prompt = f"""
-Extract the following information from this resume.
+You are a resume parser.
 
 Return ONLY valid JSON.
+
+Do not include markdown.
+Do not use ```json.
+Do not add explanations.
+If a field is missing, return an empty string "" or an empty list [].
 
 Fields:
 - Name
