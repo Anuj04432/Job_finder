@@ -18,7 +18,7 @@ Return ONLY valid JSON.
 Do not include markdown.
 Do not use ```json.
 Do not add explanations.
-Add only the skills that used for resume analyzing with , only keywords.
+Add only the skills that used for resume analyzing with , only important keywords.
 If a field is missing, return an empty string "" or an empty list [].
 
 
