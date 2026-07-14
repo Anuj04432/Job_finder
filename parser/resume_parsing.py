@@ -1,12 +1,15 @@
 import google.generativeai as genai
 import os
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
+
+genai.configure(api_key=os.getenv("GEMINI_API_KEY_2"))
+
+model = genai.GenerativeModel("gemini-3.5-flash")
 
 def parser(text):
-    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-    model = genai.GenerativeModel("gemini-3.5-flash")
-
     prompt = f"""
 You are a resume parser.
 
@@ -15,7 +18,10 @@ Return ONLY valid JSON.
 Do not include markdown.
 Do not use ```json.
 Do not add explanations.
+Add only the skills that used for resume analyzing with , only keywords.
 If a field is missing, return an empty string "" or an empty list [].
+
+
 
 Fields:
 - Name
