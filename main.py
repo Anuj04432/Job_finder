@@ -19,19 +19,19 @@ if uploaded_file is not None:
         if page_text:
             text += page_text + "\n"
 
-    st.text_area("Extracted Text", text, height=300)
+    # st.text_area("Extracted Text", text, height=300)
 
     resume_data = parser(text)
 
     with st.expander("Show details"):
-        st.write(f"Name:{name(text)}")
-        st.write(f"Email:{email(text)}")
-        st.write(f"Contact_number:{number(text)}")
-        st.write(resume_data["Name"])
-        st.write(resume_data["Email"])
-        st.write(resume_data["Phone"])
-        st.write(resume_data["Skills"])
-        st.write(resume_data["Projects"])
+        # st.write(f"Name:{name(text)}")
+        # st.write(f"Email:{email(text)}")
+        # st.write(f"Contact_number:{number(text)}")
+        st.write("Name = ",resume_data["Name"])
+        st.write("Email = ",resume_data["Email"])
+        st.write("Phone = ",resume_data["Phone"])
+        st.write("Skills = ",resume_data["Skills"])
+        # st.write(resume_data["Projects"])
 
 
 
