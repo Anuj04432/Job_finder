@@ -5,36 +5,48 @@ from extracter.extracter import name, email,number
 import re
 from parser.resume_parsing import parser
 
+if "analyze_resume" not in st.session_state:
+    st.session_state.analyze_resume = ""
+
+if 'resume_data' not in st.session_state:
+    st.session_state.resume_data = None
+
 st.title("📄 Resume Analyzer")
 
 uploaded_file = st.file_uploader("Upload Resume (PDF)", type="pdf")
 
-text = ""
 
-if uploaded_file is not None:
-    reader = PdfReader(uploaded_file)
+if st.button("Analyze_resume"):
+    if uploaded_file:
+        text = ""
+        reader = PdfReader(uploaded_file)
 
-    for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text += page_text + "\n"
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+
+        st.session_state.analyze_resume = text
 
     # st.text_area("Extracted Text", text, height=300)
 
-    resume_data = parser(text)
+if st.session_state.analyze_resume:
+    if st.button("resume_data"):
+        with st.spinner("Extracting Data...."):
+            st.session_state.resume_data = parser(st.session_state.analyze_resume)
 
-    with st.expander("Show details"):
-        # st.write(f"Name:{name(text)}")
-        # st.write(f"Email:{email(text)}")
-        # st.write(f"Contact_number:{number(text)}")
-        st.write("Name = ",resume_data["Name"])
-        st.write("Email = ",resume_data["Email"])
-        st.write("Phone = ",resume_data["Phone"])
-        st.write("Skills = ",resume_data["Skills"])
-        # st.write(resume_data["Projects"])
+            with st.expander("Show details"):
+                # st.write(f"Name:{name(st.session_state.analyze_resume)}")
+                # st.write(f"Email:{email(st.session_state.analyze_resume)}")
+                # st.write(f"Contact_number:{number(st.session_state.analyze_resume)}")
+                st.write("Name = ",st.session_state.resume_data["Name"])
+                st.write("Email = ",st.session_state.resume_data["Email"])
+                st.write("Phone = ",st.session_state.resume_data["Phone"])
+                st.write("Skills = ",st.session_state.resume_data["Skills"])
+                # # st.write(resume_data["Projects"])
 
-
-
+text = st.session_state.analyze_resume
+if text:
     st.subheader("Applicable Job Roles")
 
     role_scores = {}
