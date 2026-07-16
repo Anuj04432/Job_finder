@@ -1,10 +1,10 @@
 from pypdf import PdfReader
 import re
 
-# file = PdfReader("example.pdf")
-# text1 = ""
-# for i in file.pages:
-#     text1 += i.extract_text()+"\n"
+file = PdfReader("Resume.pdf")
+text1 = ""
+for i in file.pages:
+    text1 += i.extract_text()+"\n"
 def name(text):
     name = None
     if name is None:
@@ -28,14 +28,14 @@ def email(text):
 
 
 def number(text):
-    number = re.search(r'[\+91]?\s?\d{5}[\s+]?\d{5}', text)
+    number = re.search(r'\+?9?1?\s?\d{5}[\s+]?\d{5}', text)
     if number:
         return number.group()
     else:
         return None
 
 
-# print(number(text1))
+# print(number("+91 77608 01057"))
 
 
 
