@@ -34,16 +34,25 @@ if st.session_state.analyze_resume:
     if st.button("resume_data"):
         with st.spinner("Extracting Data...."):
             st.session_state.resume_data = parser(st.session_state.analyze_resume)
+            
+            col1,col2,col3 = st.columns(3)
+            with col1:
+                with st.expander("Personal_Info"):
+                        st.write("Name : ",st.session_state.resume_data["Name"])
+                        st.write("Phone : ",st.session_state.resume_data["Phone"])
+                        st.write("Email : ",st.session_state.resume_data["Email"])
+            with col2:
+                with st.expander("skills"):
+                        for index,i in enumerate(st.session_state.resume_data["Skills"],1):
+                            st.write(st.session_state.resume_data["Skills"])
 
-            with st.expander("Show details"):
-                # st.write(f"Name:{name(st.session_state.analyze_resume)}")
-                # st.write(f"Email:{email(st.session_state.analyze_resume)}")
-                # st.write(f"Contact_number:{number(st.session_state.analyze_resume)}")
-                st.write("Name = ",st.session_state.resume_data["Name"])
-                st.write("Email = ",st.session_state.resume_data["Email"])
-                st.write("Phone = ",st.session_state.resume_data["Phone"])
-                st.write("Skills = ",st.session_state.resume_data["Skills"])
-                # # st.write(resume_data["Projects"])
+            with col3:
+                with st.expander("Education"):
+                    st.write(st.session_state.resume_data["Certifications"])
+                        
+
+
+st.divider()
 
 text = st.session_state.analyze_resume
 if text:
@@ -67,7 +76,7 @@ if text:
     st.success(f"🏆 Best Matching Role: {best_role}")
     st.metric("Match Score", f"{role_scores[best_role]:.1f}%")
 
-
+if text:
     st.divider()
 
     selected_role = st.selectbox(
@@ -108,7 +117,7 @@ if text:
             st.write("No missing skills.")
 
 
+for index,i in enumerate(st.session_state.resume_data["Skills"],1):
+    st.write(f"{index}.{i}")
 
-    
-
-
+st.write(st.session_state.resume_data)
