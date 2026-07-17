@@ -31,7 +31,6 @@ if st.button("Analyze_resume"):
     # st.text_area("Extracted Text", text, height=300)
 
 if st.session_state.analyze_resume:
-    if st.button("resume_data"):
         with st.spinner("Extracting Data...."):
             st.session_state.resume_data = parser(st.session_state.analyze_resume)
             
@@ -44,7 +43,7 @@ if st.session_state.analyze_resume:
             with col2:
                 with st.expander("skills"):
                         for index,i in enumerate(st.session_state.resume_data["Skills"],1):
-                            st.write(st.session_state.resume_data["Skills"])
+                            st.write(f"{index}.{i}")
 
             with col3:
                 with st.expander("Education"):
