@@ -37,14 +37,17 @@ Resume:
 
 {text}
 """
-    response = model.generate_content(prompt)
+    try:
+        response = model.generate_content(prompt)
+        json_text = response.text
 
-    json_text = response.text
+        # Remove markdown if present
+        json_text = json_text.replace("```json", "").replace("```", "").strip()
 
-    # Remove markdown if present
-    json_text = json_text.replace("```json", "").replace("```", "").strip()
+        # Convert JSON string to Python dictionary
+        data = json.loads(json_text)
 
-    # Convert JSON string to Python dictionary
-    data = json.loads(json_text)
-
-    return data
+        return data
+    
+    except Exception as e:
+        return None
