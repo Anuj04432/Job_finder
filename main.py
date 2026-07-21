@@ -27,29 +27,43 @@ if st.button("Analyze_resume"):
                 text += page_text + "\n"
 
         st.session_state.analyze_resume = text
+        # st.session_state.resume_data = None
+        # st.text_area("Resume Text", st.session_state.analyze_resume, height=300)
 
-    # st.text_area("Extracted Text", text, height=300)
 
-if st.session_state.analyze_resume:
+if st.session_state.analyze_resume and st.session_state.resume_data is None:
         with st.spinner("Extracting Data...."):
             st.session_state.resume_data = parser(st.session_state.analyze_resume)
-            
-            col1,col2,col3 = st.columns(3)
-            with col1:
-                with st.expander("Personal_Info"):
-                        st.write("Name : ",st.session_state.resume_data["Name"])
-                        st.write("Phone : ",st.session_state.resume_data["Phone"])
-                        st.write("Email : ",st.session_state.resume_data["Email"])
-            with col2:
-                with st.expander("skills"):
-                        for index,i in enumerate(st.session_state.resume_data["Skills"],1):
-                            st.write(f"{index}.{i}")
 
-            with col3:
-                with st.expander("Education"):
-                    st.write(st.session_state.resume_data["Certifications"])
+        
+        
+
+if st.session_state.resume_data  is None:
+    st.error("API is not responding😿")
+
+    with st.expander("Personal Info only."):
+        st.write("👱Name : ",name(st.session_state.analyze_resume))
+        st.write("📧Email : ",email(st.session_state.analyze_resume))
+        st.write("📞Phone : ",number(st.session_state.analyze_resume))
+
+else:
+    col1,col2,col3 = st.columns(3)
+    with col1:
+        with st.expander("Personal_Info"):
+                st.write("Name : ",st.session_state.resume_data["Name"])
+                st.write("Phone : ",st.session_state.resume_data["Phone"])
+                st.write("Email : ",st.session_state.resume_data["Email"])
+    with col2:
+        with st.expander("skills"):
+            for index,i in enumerate(st.session_state.resume_data["Skills"],1):
+                st.write(f"{index}.{i}")
+
+    with col3:
+        with st.expander("Education"):
+                st.write(st.session_state.resume_data["Certifications"])
+
                         
-
+ 
 
 st.divider()
 
@@ -116,7 +130,4 @@ if text:
             st.write("No missing skills.")
 
 
-for index,i in enumerate(st.session_state.resume_data["Skills"],1):
-    st.write(f"{index}.{i}")
-
-st.write(st.session_state.resume_data)
+# st.write(st.session_state.resume_data)
