@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-genai.configure(api_key=os.getenv("GEMINI_API_KEY_2"))
+genai.configure(api_key=os.getenv("GEMINI_API_KEY_3"))
 
-model = genai.GenerativeModel("gemini-3.5-flash")
+model = genai.GenerativeModel("models/gemini-3.5-flash")
 
 def parser(text):
     prompt = f"""
@@ -50,4 +50,7 @@ Resume:
         return data
     
     except Exception as e:
+        print("Gemini Error:", e)
         return None
+    
+    
