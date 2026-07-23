@@ -26,7 +26,7 @@ from docx import Document
 import pytesseract
 from PIL import Image
 
-
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 # Minimum characters we'd expect from a "real" text-based page.
 # If extraction falls below this, we assume it's a scanned/image page and OCR it instead.
 MIN_CHARS_PER_PAGE = 40
