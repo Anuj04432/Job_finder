@@ -105,3 +105,73 @@ job_keywords = {
 }
 
 
+ROLE_SKILLS = {
+    "Data Scientist": {
+        "python", "sql", "machine learning", "statistics", "pandas", "numpy",
+        "scikit-learn", "deep learning", "data visualization", "tensorflow",
+        "pytorch", "data cleaning", "feature engineering", "a/b testing",
+        "r", "tableau", "power bi",
+    },
+    "Data Analyst": {
+        "sql", "excel", "python", "power bi", "tableau", "data visualization",
+        "data cleaning", "statistics", "reporting", "google sheets",
+        "dashboarding", "a/b testing",
+    },
+    "Machine Learning Engineer": {
+        "python", "machine learning", "deep learning", "tensorflow", "pytorch",
+        "docker", "kubernetes", "mlops", "model deployment", "aws", "gcp",
+        "azure", "sql", "data pipelines", "fastapi", "flask", "git",
+    },
+    "Backend Developer": {
+        "python", "java", "node.js", "sql", "rest api", "fastapi", "flask",
+        "django", "docker", "git", "postgresql", "mongodb", "microservices",
+        "aws", "system design", "redis",
+    },
+    "Frontend Developer": {
+        "javascript", "typescript", "react", "html", "css", "next.js",
+        "vue", "redux", "tailwind css", "git", "responsive design",
+        "webpack", "figma",
+    },
+    "Full Stack Developer": {
+        "javascript", "python", "react", "node.js", "sql", "html", "css",
+        "rest api", "git", "mongodb", "docker", "typescript", "express.js",
+    },
+    "DevOps Engineer": {
+        "docker", "kubernetes", "aws", "azure", "gcp", "ci/cd", "terraform",
+        "jenkins", "linux", "bash", "git", "ansible", "monitoring",
+        "prometheus", "grafana",
+    },
+    "Software Engineer": {
+        "python", "java", "c++", "data structures", "algorithms", "git",
+        "sql", "system design", "rest api", "docker", "testing",
+        "object-oriented programming",
+    },
+    "Product Manager": {
+        "product strategy", "roadmapping", "user research", "agile", "scrum",
+        "stakeholder management", "data analysis", "sql", "wireframing",
+        "a/b testing", "jira", "market research",
+    },
+    "UI/UX Designer": {
+        "figma", "adobe xd", "sketch", "wireframing", "prototyping",
+        "user research", "usability testing", "design systems",
+        "interaction design", "photoshop",
+    },
+}
+ 
+ 
+# Small synonym map so close variants count as a match
+# (e.g. "ML" and "Machine Learning" should be treated the same)
+SYNONYMS = {
+    "ml": "machine learning",
+    "dl": "deep learning",
+    "js": "javascript",
+    "ts": "typescript",
+    "nlp": "natural language processing",
+    "cv": "computer vision",
+    "k8s": "kubernetes",
+    "postgres": "postgresql",
+    "reactjs": "react",
+    "node": "node.js",
+    "oop": "object-oriented programming",
+}
+ 
