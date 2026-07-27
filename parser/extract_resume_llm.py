@@ -91,6 +91,11 @@ import json
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
 
 
 # ---------- Schema: defines exactly what fields come back, and their types ----------
@@ -177,7 +182,7 @@ def extract_resume_data(resume_text: str, api_key: str | None = None) -> ResumeD
     Raises RuntimeError with a clear message if the API key is missing or invalid.
     """
 
-    key = os.environ.get("GEMINI_API_KEY_3")
+    key = os.environ.get("GEMINI_API_KEY")
 
     if not key:
         raise RuntimeError(
