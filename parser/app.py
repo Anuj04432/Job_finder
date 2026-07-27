@@ -1,33 +1,18 @@
-"""
-Streamlit UI for the resume analyzer — full pipeline version.
-
-Combines:
-  - extract_resume_text.py        (Step 1: PDF/DOCX/image -> raw text)
-  - extract_resume_fallback.py    (Step 2: raw text -> structured data,
-                                    tries Gemini first, falls back to
-                                    rule-based extractors if the API fails)
-
-Run with:
-    streamlit run app.py
-
-Requirements:
-    pip install streamlit google-genai pydantic --break-system-packages
-
-Set your Gemini API key before launching (optional — app still works
-without it, just always uses the rule-based fallback):
-    $env:GEMINI_API_KEY = "your-key-here"
-
-Place this file in the SAME folder as all the extract_*.py files.
-"""
+import os
+import sys
 
 import json
 import tempfile
 from pathlib import Path
 
 import streamlit as st
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.join(BASE_DIR, "..")
+sys.path.append(PROJECT_ROOT)
 
 from extract_resume_text import extract_resume_text
 from extract_resume_fallback import get_resume_data
+from skills_gap.skills_gap import analyze_roles
 
 
 st.set_page_config(page_title="Resume Analyzer", page_icon="📄", layout="centered")
@@ -128,16 +113,16 @@ if uploaded_file is not None:
         st.write("None found.")
 
     # --- Projects ---
-    st.subheader("💻 Projects")
-    if data.get("projects"):
-        for proj in data["projects"]:
-            st.markdown(f"**{proj.get('title') or 'Untitled Project'}**")
-            if proj.get("tech_stack"):
-                st.caption(", ".join(proj["tech_stack"]))
-            for point in proj.get("description", []):
-                st.write(f"- {point}")
-    else:
-        st.write("None found.")
+    # st.subheader("💻 Projects")
+    # if data.get("projects"):
+    #     for proj in data["projects"]:
+    #         st.markdown(f"**{proj.get('title') or 'Untitled Project'}**")
+    #         if proj.get("tech_stack"):
+    #             st.caption(", ".join(proj["tech_stack"]))
+    #         for point in proj.get("description", []):
+    #             st.write(f"- {point}")
+    # else:
+    #     st.write("None found.")
 
     # --- Certifications & Achievements ---
     st.subheader("🏆 Certifications & Achievements")
@@ -164,6 +149,19 @@ if uploaded_file is not None:
         file_name="resume_data.json",
         mime="application/json",
     )
+
+
+    st.subheader("🎯 Role Fit & Skill Gap")
+    if data.get("skills"):
+        analysis = analyze_roles(data["skills"])
+        st.write(f"**Best fit role:** {analysis['best_fit_role']}")
+
+        for match in analysis["top_matches"]:
+            with st.expander(f"{match['role']} — {match['match_percentage']}% match"):
+                st.write("**✅ Present skills:**", ", ".join(match["present_skills"]) or "None")
+                st.write("**❌ Missing skills:**", ", ".join(match["missing_skills"]) or "None")
+    else:
+        st.write("No skills extracted yet — can't analyze role fit.")
 
 else:
     st.info("Upload a resume file to get started (PDF, DOCX, or image).")
