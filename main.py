@@ -1,9 +1,9 @@
 import streamlit as st
 from pypdf import PdfReader
 from keywords.keys import job_keywords
-from extracter.extracter import name, email,number
+from parser.extract_personal_info import extract_name,extract_email,extract_phone
 import re
-from parser.resume_parsing import parser
+# from parser.resume_parsing import parser
 
 if "analyze_resume" not in st.session_state:
     st.session_state.analyze_resume = ""
@@ -31,9 +31,9 @@ if st.button("Analyze_resume"):
         # st.text_area("Resume Text", st.session_state.analyze_resume, height=300)
 
 
-if st.session_state.analyze_resume and st.session_state.resume_data is None:
-        with st.spinner("Extracting Data...."):
-            st.session_state.resume_data = parser(st.session_state.analyze_resume)
+# if st.session_state.analyze_resume and st.session_state.resume_data is None:
+#         with st.spinner("Extracting Data...."):
+#             st.session_state.resume_data = parser(st.session_state.analyze_resume)
 
         
         
@@ -42,25 +42,25 @@ if st.session_state.resume_data  is None:
     st.error("API is not responding😿")
 
     with st.expander("Personal Info only."):
-        st.write("👱Name : ",name(st.session_state.analyze_resume))
-        st.write("📧Email : ",email(st.session_state.analyze_resume))
-        st.write("📞Phone : ",number(st.session_state.analyze_resume))
+        st.write("👱Name : ",extract_name(st.session_state.analyze_resume))
+        st.write("📧Email : ",extract_email(st.session_state.analyze_resume))
+        st.write("📞Phone : ",extract_phone(st.session_state.analyze_resume))
 
-else:
-    col1,col2,col3 = st.columns(3)
-    with col1:
-        with st.expander("Personal_Info"):
-                st.write("Name : ",st.session_state.resume_data["Name"])
-                st.write("Phone : ",st.session_state.resume_data["Phone"])
-                st.write("Email : ",st.session_state.resume_data["Email"])
-    with col2:
-        with st.expander("skills"):
-            for index,i in enumerate(st.session_state.resume_data["Skills"],1):
-                st.write(f"{index}.{i}")
+# else:
+#     col1,col2,col3 = st.columns(3)
+#     with col1:
+#         with st.expander("Personal_Info"):
+#                 st.write("Name : ",st.session_state.resume_data["Name"])
+#                 st.write("Phone : ",st.session_state.resume_data["Phone"])
+#                 st.write("Email : ",st.session_state.resume_data["Email"])
+#     with col2:
+#         with st.expander("skills"):
+#             for index,i in enumerate(st.session_state.resume_data["Skills"],1):
+#                 st.write(f"{index}.{i}")
 
-    with col3:
-        with st.expander("Education"):
-                st.write(st.session_state.resume_data["Certifications"])
+#     with col3:
+#         with st.expander("Education"):
+#                 st.write(st.session_state.resume_data["Certifications"])
 
                         
  
