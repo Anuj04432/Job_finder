@@ -68,76 +68,83 @@ if uploaded_file is not None:
                 st.write(f"- {label.capitalize()}: {url}")
 
     # --- Summary ---
-    if data.get("summary"):
-        st.subheader("🧾 Professional Summary")
-        st.write(data["summary"])
+    with st.expander("More Information"):
+        with st.expander("summary"):
+            if data.get("summary"):
+                st.subheader("🧾 Professional Summary")
+                st.write(data["summary"])
 
-    # --- Skills ---
-    st.subheader("🛠️ Skills")
-    if data.get("skills"):
-        st.write(", ".join(data["skills"]))
-    else:
-        st.write("None found.")
-
-    # --- Experience ---
-    st.subheader("💼 Experience")
-    if data.get("experience"):
-        for exp in data["experience"]:
-            # Rule-based fallback entries only have 'title' + 'description'.
-            # LLM entries have separate title/company/dates fields.
-            if "company" in exp:
-                header = f"**{exp.get('title', '')}** — {exp.get('company', '')}"
-                dates = " to ".join(filter(None, [exp.get("start_date"), exp.get("end_date")]))
-                if dates:
-                    header += f" ({dates})"
+        # --- Skills ---
+        with st.expander("Skills"):
+            st.subheader("🛠️ Skills")
+            if data.get("skills"):
+                st.write(", ".join(data["skills"]))
             else:
-                header = f"**{exp.get('title') or 'Untitled role'}**"
-            st.markdown(header)
-            for point in exp.get("description", []):
-                st.write(f"- {point}")
-    else:
-        st.write("None found.")
+                st.write("None found.")
 
-    # --- Education ---
-    st.subheader("🎓 Education")
-    if data.get("education"):
-        for edu in data["education"]:
-            if "raw_text" in edu:
-                st.write(f"- {edu['raw_text']}")
+        # --- Experience ---
+        with st.expander("Experience"):
+            st.subheader("💼 Experience")
+            if data.get("experience"):
+                for exp in data["experience"]:
+                    # Rule-based fallback entries only have 'title' + 'description'.
+                    # LLM entries have separate title/company/dates fields.
+                    if "company" in exp:
+                        header = f"**{exp.get('title', '')}** — {exp.get('company', '')}"
+                        dates = " to ".join(filter(None, [exp.get("start_date"), exp.get("end_date")]))
+                        if dates:
+                            header += f" ({dates})"
+                    else:
+                        header = f"**{exp.get('title') or 'Untitled role'}**"
+                    st.markdown(header)
+                    for point in exp.get("description", []):
+                        st.write(f"- {point}")
             else:
-                line = f"**{edu.get('degree', '')}** — {edu.get('institution', '')}"
-                if edu.get("graduation_date"):
-                    line += f" ({edu['graduation_date']})"
-                st.markdown(line)
-    else:
-        st.write("None found.")
+                st.write("None found.")
 
-    # --- Projects ---
-    # st.subheader("💻 Projects")
-    # if data.get("projects"):
-    #     for proj in data["projects"]:
-    #         st.markdown(f"**{proj.get('title') or 'Untitled Project'}**")
-    #         if proj.get("tech_stack"):
-    #             st.caption(", ".join(proj["tech_stack"]))
-    #         for point in proj.get("description", []):
-    #             st.write(f"- {point}")
-    # else:
-    #     st.write("None found.")
+        # --- Education ---
+        with st.expander("Education"):
+            st.subheader("🎓 Education")
+            if data.get("education"):
+                for edu in data["education"]:
+                    if "raw_text" in edu:
+                        st.write(f"- {edu['raw_text']}")
+                    else:
+                        line = f"**{edu.get('degree', '')}** — {edu.get('institution', '')}"
+                        if edu.get("graduation_date"):
+                            line += f" ({edu['graduation_date']})"
+                        st.markdown(line)
+            else:
+                st.write("None found.")
 
-    # --- Certifications & Achievements ---
-    st.subheader("🏆 Certifications & Achievements")
-    certs = data.get("certifications") or []
-    achievements = data.get("achievements") or []
-    if certs:
-        st.write("**Certifications:**")
-        for c in certs:
-            st.write(f"- {c}")
-    if achievements:
-        st.write("**Achievements:**")
-        for a in achievements:
-            st.write(f"- {a}")
-    if not certs and not achievements:
-        st.write("None found.")
+        # --- Projects ---
+        with st.expander("Projects"):
+            st.subheader("💻 Projects")
+            if data.get("projects"):
+                for proj in data["projects"]:
+                    st.markdown(f"**{proj.get('title') or 'Untitled Project'}**")
+                    if proj.get("tech_stack"):
+                        st.caption(", ".join(proj["tech_stack"]))
+                    for point in proj.get("description", []):
+                        st.write(f"- {point}")
+            else:
+                st.write("None found.")
+
+        # --- Certifications & Achievements ---
+        with st.expander("🏆 Certifications & Achievements"):
+            st.subheader("🏆 Certifications & Achievements")
+            certs = data.get("certifications") or []
+            achievements = data.get("achievements") or []
+            if certs:
+                st.write("**Certifications:**")
+                for c in certs:
+                    st.write(f"- {c}")
+            if achievements:
+                st.write("**Achievements:**")
+                for a in achievements:
+                    st.write(f"- {a}")
+            if not certs and not achievements:
+                st.write("None found.")
 
     # --- Raw JSON + downloads ---
     with st.expander("View raw JSON"):
