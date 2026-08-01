@@ -16,3 +16,4 @@ Extracted personal information from the resume.
 - Resume update
 
 ## The project is under Development
+Complete till november
