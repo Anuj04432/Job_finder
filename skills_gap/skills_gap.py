@@ -109,21 +109,30 @@ def _fuzzy_resolve(skill: str, cutoff: float = 0.82) -> str:
     return close[0] if close else skill
 
 
-def _normalize_resume_skills(resume_skills: list[str]) -> set:
+def _normalize_resume_skills(resume_skills: list) -> set:
     result = set()
     for s in resume_skills:
+        if not isinstance(s, str) or not s.strip():
+            continue  # skip None, empty strings, or unexpected non-string entries
         normalized = _normalize_skill(s)
         resolved = _fuzzy_resolve(normalized)
         result.add(resolved)
     return result
 
 
-def analyze_roles(resume_skills: list[str], top_n: int = 3) -> dict:
+def analyze_roles(resume_skills: list, top_n: int = 3) -> dict:
     """
     Weighted role match: core skills count double toward the match score.
     Returns top N role matches plus a prioritized "skills to learn next"
     list for the single best-fit role.
+
+    Always returns a dict with 'top_matches', 'best_fit_role', and
+    'skills_to_learn_next' keys, even if resume_skills is empty or messy —
+    callers can safely use .get() but this guarantees the keys exist.
     """
+    if not resume_skills:
+        return {"top_matches": [], "best_fit_role": None, "skills_to_learn_next": []}
+
     normalized_resume = _normalize_resume_skills(resume_skills)
 
     role_scores = []
