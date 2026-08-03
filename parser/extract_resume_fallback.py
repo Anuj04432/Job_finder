@@ -71,6 +71,55 @@ def get_resume_data(text: str, api_key: str | None = None) -> dict:
         return data
 
 
+def get_resume_data_combined(text: str, api_key: str | None = None) -> dict:
+    """
+    Runs BOTH extraction methods always (not just as an on-failure fallback):
+      - Gemini, if it succeeds (best quality for most fields)
+      - Rule-based, always (fast, free, local — no API dependency)
+
+    The main returned data uses Gemini's result when available (same as
+    get_resume_data), but "skills" is the UNION of both methods' skill
+    lists — since each method sometimes catches skills the other misses
+    (e.g. Gemini reading skills mentioned in project descriptions, vs.
+    rule-based catching an explicit Skills section verbatim), a merged
+    list gives more complete input for the skill-gap analysis.
+
+    Returns the same dict shape as get_resume_data, plus:
+      - "rule_based_skills": the rule-based-only skill list
+      - "llm_skills": the LLM-only skill list (empty list if LLM failed)
+    """
+    rule_based_data = extract_resume_rule_based(text)
+    rule_based_skills = rule_based_data.get("skills") or []
+
+    try:
+        llm_result = extract_resume_data(text, api_key=api_key)
+        data = llm_result.model_dump()
+        data["extraction_method"] = "llm"
+        llm_skills = data.get("skills") or []
+    except Exception as e:
+        print(f"[warning] LLM extraction failed ({e}); using rule-based data as primary.",
+              file=sys.stderr)
+        data = rule_based_data
+        data["extraction_method"] = "rule_based"
+        llm_skills = []
+
+    # Merge skills from both sources, case-insensitive dedup, preserve first-seen casing
+    seen = set()
+    combined_skills = []
+    for skill in list(llm_skills) + list(rule_based_skills):
+        if not isinstance(skill, str) or not skill.strip():
+            continue
+        key = skill.strip().lower()
+        if key not in seen:
+            seen.add(key)
+            combined_skills.append(skill.strip())
+
+    data["skills"] = combined_skills
+    data["llm_skills"] = llm_skills
+    data["rule_based_skills"] = rule_based_skills
+    return data
+
+
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python extract_resume_fallback.py <path_to_text_file>")
@@ -89,5 +138,5 @@ if __name__ == "__main__":
         print(f"Could not decode {sys.argv[1]} with utf-8, utf-8-sig, or utf-16.")
         sys.exit(1)
 
-    result = get_resume_data(text)
+    result = get_resume_data_combined(text)
     print(json.dumps(result, indent=2))

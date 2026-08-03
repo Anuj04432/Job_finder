@@ -373,27 +373,28 @@ if uploaded_file is not None:
 
 
         # --- Role Fit & Skill Gap ---
+   # --- Role Fit & Skill Gap ---
     st.subheader("🎯 Role Fit & Skill Gap")
     if data.get("skills"):
         analysis = analyze_roles(data["skills"])
-        st.write(f"**Best-fit role:** {analysis['best_fit_role']}")
-
-        if analysis["skills_to_learn_next"]:
+        st.write(f"**Best-fit role:** {analysis.get('best_fit_role') or 'Not enough data'}")
+ 
+        if analysis.get("skills_to_learn_next"):
             st.write(
-                    "**Top skills to learn next:** "
-                    + ", ".join(analysis["skills_to_learn_next"])
-                )
-
-        for match in analysis["top_matches"]:
+                "**Top skills to learn next:** "
+                + ", ".join(analysis["skills_to_learn_next"])
+            )
+ 
+        for match in analysis.get("top_matches", []):
             with st.expander(f"{match['role']} — {match['match_percentage']}% match"):
-                    st.write("**✅ Core skills present:**",
-                            ", ".join(match["present_core_skills"]) or "None")
-                    st.write("**❌ Core skills missing:**",
-                            ", ".join(match["missing_core_skills"]) or "None")
-                    st.write("**✅ Nice-to-have present:**",
-                            ", ".join(match["present_nice_to_have_skills"]) or "None")
-                    st.write("**➕ Nice-to-have missing:**",
-                            ", ".join(match["missing_nice_to_have_skills"]) or "None")
+                st.write("**✅ Core skills present:**",
+                         ", ".join(match["present_core_skills"]) or "None")
+                st.write("**❌ Core skills missing:**",
+                         ", ".join(match["missing_core_skills"]) or "None")
+                st.write("**✅ Nice-to-have present:**",
+                         ", ".join(match["present_nice_to_have_skills"]) or "None")
+                st.write("**➕ Nice-to-have missing:**",
+                         ", ".join(match["missing_nice_to_have_skills"]) or "None")
     else:
         st.write("No skills extracted yet — can't analyze role fit.")
 
