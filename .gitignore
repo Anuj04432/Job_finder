@@ -22,3 +22,7 @@ __pycache__/
 Anuj_resume.pdf
 res.pdf
 extracted.txt
+
+uv.lock
+main.ipynb  
+nlu.py
