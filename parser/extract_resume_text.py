@@ -1,14 +1,23 @@
 """
 Step 1: Extract raw text from a resume file (PDF, DOCX, or image).
 
-Supports:
-- Native text PDFs (via pdfplumber)
-- Scanned/image PDFs (via OCR fallback with pytesseract + PyMuPDF rendering)
-- DOCX files (via python-docx, preserving paragraph and table content)
-- Plain images (via pytesseract OCR)
+Now uses Microsoft's MarkItDown as the PRIMARY extractor for PDF and DOCX —
+it preserves document structure (headings, lists, tables) as Markdown, which
+tends to produce cleaner, better-structured text than raw text extraction
+(and DOCX headings come through as real "#"/"##" markers, making section
+detection much easier downstream).
+
+Falls back automatically to the original pdfplumber/python-docx approach if:
+  - MarkItDown's output looks too short (common for scanned/image-based PDFs,
+    since MarkItDown's free path doesn't do OCR — that needs a paid LLM
+    vision plugin, which we're deliberately not using here)
+  - MarkItDown raises any error on a given file
+
+Scanned/image PDFs and plain image files still go through local Tesseract
+OCR (free, no API needed) — MarkItDown is not used for those.
 
 Install dependencies:
-    pip install pdfplumber PyMuPDF python-docx pytesseract pillow --break-system-packages
+    pip install markitdown[pdf,docx] pdfplumber PyMuPDF python-docx pytesseract pillow --break-system-packages
 
 You also need the Tesseract binary installed on the system (not just the python package):
     Ubuntu/Debian: sudo apt-get install tesseract-ocr
@@ -20,23 +29,49 @@ import os
 import io
 from pathlib import Path
 
+from markitdown import MarkItDown
 import pdfplumber
 import fitz  # PyMuPDF
 from docx import Document
 import pytesseract
 from PIL import Image
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# --- Windows users: if Tesseract isn't on your PATH, uncomment and set this
+# to wherever you installed it (default install location shown below):
+# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+
 # Minimum characters we'd expect from a "real" text-based page.
 # If extraction falls below this, we assume it's a scanned/image page and OCR it instead.
 MIN_CHARS_PER_PAGE = 40
 
+_markitdown_client = MarkItDown()
 
-def extract_text_from_pdf(file_path: str) -> str:
+
+def _rough_page_count(file_path: str) -> int:
+    """Quick page count via PyMuPDF, used to judge whether MarkItDown's
+    output length is plausible for this document (scanned PDFs will look
+    suspiciously short relative to their page count)."""
+    try:
+        doc = fitz.open(file_path)
+        count = doc.page_count
+        doc.close()
+        return max(count, 1)
+    except Exception:
+        return 1
+
+
+def extract_text_from_pdf_markitdown(file_path: str) -> str:
+    """Primary PDF extraction path via MarkItDown."""
+    result = _markitdown_client.convert(file_path)
+    return (result.text_content or "").strip()
+
+
+def extract_text_from_pdf_legacy(file_path: str) -> str:
     """
-    Extract text from a PDF. Tries direct text extraction first (fast, accurate
-    for native PDFs). Falls back to OCR per-page if a page yields little/no text
-    (common for scanned resumes exported as images).
+    Original fallback PDF extraction: pdfplumber for native text, with
+    automatic per-page OCR fallback for scanned pages. Used only when
+    MarkItDown's output looks too thin to trust.
     """
     text_chunks = []
 
@@ -52,6 +87,30 @@ def extract_text_from_pdf(file_path: str) -> str:
                 text_chunks.append(ocr_text)
 
     return "\n\n".join(text_chunks).strip()
+
+
+def extract_text_from_pdf(file_path: str) -> str:
+    """
+    Unified PDF extraction: tries MarkItDown first (better structure
+    preservation). Falls back to the legacy pdfplumber+OCR approach if
+    MarkItDown's output looks too short relative to the page count
+    (a strong signal of a scanned/image-based PDF, which MarkItDown's
+    free path can't OCR) or if MarkItDown raises an error.
+    """
+    page_count = _rough_page_count(file_path)
+
+    try:
+        text = extract_text_from_pdf_markitdown(file_path)
+    except Exception:
+        text = ""
+
+    if len(text) >= MIN_CHARS_PER_PAGE * page_count:
+        return text
+
+    # MarkItDown's output looks too thin — likely a scanned PDF, or MarkItDown
+    # failed silently on this file's structure. Fall back to the legacy path,
+    # which has its own per-page OCR fallback built in.
+    return extract_text_from_pdf_legacy(file_path)
 
 
 def _ocr_pdf_page(file_path: str, page_num: int, zoom: int = 3) -> str:
@@ -70,10 +129,16 @@ def _ocr_pdf_page(file_path: str, page_num: int, zoom: int = 3) -> str:
     return pytesseract.image_to_string(image)
 
 
-def extract_text_from_docx(file_path: str) -> str:
+def extract_text_from_docx_markitdown(file_path: str) -> str:
+    """Primary DOCX extraction path via MarkItDown (preserves heading structure)."""
+    result = _markitdown_client.convert(file_path)
+    return (result.text_content or "").strip()
+
+
+def extract_text_from_docx_legacy(file_path: str) -> str:
     """
-    Extract text from a DOCX file, including paragraphs and table cells
-    (resumes often use tables for layout, e.g. skills grids or two-column formats).
+    Original fallback DOCX extraction via python-docx. Used only if
+    MarkItDown's output looks empty/too short for this file.
     """
     doc = Document(file_path)
     parts = []
@@ -91,8 +156,29 @@ def extract_text_from_docx(file_path: str) -> str:
     return "\n".join(parts).strip()
 
 
+def extract_text_from_docx(file_path: str) -> str:
+    """
+    Unified DOCX extraction: tries MarkItDown first (preserves heading
+    levels as Markdown '#'/'##', which helps downstream section detection).
+    Falls back to python-docx if MarkItDown's output is too short or errors.
+    """
+    try:
+        text = extract_text_from_docx_markitdown(file_path)
+    except Exception:
+        text = ""
+
+    if len(text) >= 20:
+        return text
+
+    return extract_text_from_docx_legacy(file_path)
+
+
 def extract_text_from_image(file_path: str) -> str:
-    """Extract text from a plain image file (e.g. a photographed/scanned resume)."""
+    """
+    Extract text from a plain image file via local Tesseract OCR.
+    (Deliberately NOT using MarkItDown here — its image handling relies on
+    an LLM vision plugin that costs API money per call; local OCR is free.)
+    """
     image = Image.open(file_path)
     return pytesseract.image_to_string(image).strip()
 
