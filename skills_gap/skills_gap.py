@@ -167,9 +167,30 @@ def analyze_roles(resume_skills: list, top_n: int = 3) -> dict:
 
     return {
         "top_matches": top_matches,
+        "all_roles": role_scores,  # full ranked list, for manual role selection
         "best_fit_role": top_matches[0]["role"] if top_matches else None,
         "skills_to_learn_next": skills_to_learn_next,
     }
+
+
+def list_all_roles() -> list[str]:
+    """All role names this module knows about, for building a manual-pick dropdown."""
+    return sorted(ROLE_SKILLS.keys())
+
+
+def get_role_breakdown(resume_skills: list, role_name: str) -> dict | None:
+    """
+    Get the present/missing skill breakdown for ONE specific role, regardless
+    of whether it's in that resume's top matches. Returns None if role_name
+    isn't a known role.
+    """
+    if role_name not in ROLE_SKILLS:
+        return None
+    analysis = analyze_roles(resume_skills, top_n=len(ROLE_SKILLS))
+    for entry in analysis["all_roles"]:
+        if entry["role"] == role_name:
+            return entry
+    return None
 
 
 if __name__ == "__main__":
