@@ -16,4 +16,12 @@ Extracted personal information from the resume.
 - Resume update
 
 ## The project is under Development
-Complete till november
+Complete till novembergit commit -m "refactor(app): restructure into guided multi-step wizard
+
+- Split single-page UI into 3 steps: upload/analyze, role selection,
+  skill gap detail — tracked via st.session_state
+- Step 2 now offers both top-3 recommended roles AND a manual dropdown
+  to explore any role, using the new skills_gap functions
+- Add 'Start over' / 'Back' navigation between steps
+- Extraction still only re-runs on a genuinely new file (hash-cached),
+  never on navigation between wizard steps"
