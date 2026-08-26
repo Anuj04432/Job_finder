@@ -28,7 +28,7 @@ import streamlit as st
 
 from extract_resume_text import extract_resume_text
 from extract_resume_fallback import get_resume_data_combined
-
+from job_search import search_jobs,rank_jobs
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, ".."))
 from skills_gap.skills_gap import analyze_roles, list_all_roles, get_role_breakdown
@@ -233,3 +233,12 @@ elif st.session_state["step"] == "skill_gap":
         if st.button("🔁 Start over with a new resume"):
             reset_all()
             st.rerun()
+
+
+
+    jobs = search_jobs(keywords=role, location="India", country_code="in")
+    ranked = rank_jobs(jobs, data["skills"])
+
+    for job in ranked:
+        st.write(f"**{job['title']}** — {job['company']} ({job['match_score']}% match)")
+        st.write(f"[Apply here]({job['apply_url']})")
