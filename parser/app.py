@@ -1,20 +1,13 @@
 """
-Resume Analyzer — guided wizard flow.
+Resume Analyzer — single-page flow.
 
-Step 1 (upload):     Upload resume, extract + analyze automatically.
-Step 2 (role_select): See ranked best-fit roles, or manually pick any role.
-Step 3 (skill_gap):   See present/missing skills for the chosen role.
+Extracts structured information from an uploaded resume (PDF, DOCX, image)
+and renders all extracted details, skills, role recommendations, skill gap
+analysis, experience, education, projects, certifications, and achievements
+in a single clean top-to-bottom layout.
 
-Uses st.session_state to track which step the user is on and to cache the
-extraction result so switching between steps (or picking a different role)
-never re-triggers the Gemini API call — only uploading a genuinely new file
-does.
-
-Run with:
-    streamlit run app.py
-
-Place this file in the SAME folder as all the extract_*.py files, with
-skills_gap/ as a sibling package (see the sys.path setup below).
+Uses session_state only to cache extraction results by file hash so
+interacting with widgets (e.g. role dropdown) doesn't re-trigger extraction.
 """
 
 import json
@@ -28,7 +21,8 @@ import streamlit as st
 
 from extract_resume_text import extract_resume_text
 from extract_resume_fallback import get_resume_data_combined
-from job_search import search_jobs,rank_jobs
+from job_search import search_jobs, rank_jobs
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, ".."))
 from skills_gap.skills_gap import analyze_roles, list_all_roles, get_role_breakdown
@@ -36,209 +30,350 @@ from skills_gap.skills_gap import analyze_roles, list_all_roles, get_role_breakd
 
 st.set_page_config(page_title="Resume Analyzer", page_icon="📄", layout="centered")
 
-
-# ---------- Session state defaults ----------
-st.session_state.setdefault("step", "upload")
+# ---------- Session state caching (to avoid redundant API calls) ----------
 st.session_state.setdefault("resume_file_hash", None)
 st.session_state.setdefault("raw_text", None)
 st.session_state.setdefault("data", None)
-st.session_state.setdefault("selected_role", None)
-
-
-def go_to(step: str):
-    st.session_state["step"] = step
-
-
-def reset_all():
-    for key in ("step", "resume_file_hash", "raw_text", "data", "selected_role"):
-        st.session_state.pop(key, None)
-    st.session_state.setdefault("step", "upload")
-
-
-# ---------- Step indicator ----------
-STEP_LABELS = {"upload": "1. Upload & Analyze", "role_select": "2. Pick a Role", "skill_gap": "3. Skill Gap"}
-st.caption(" → ".join(
-    f"**{label}**" if key == st.session_state["step"] else label
-    for key, label in STEP_LABELS.items()
-))
 
 st.title("📄 Resume Analyzer")
+st.caption("Upload a resume to extract structured data and get role recommendations.")
 
+uploaded_file = st.file_uploader("Upload a resume", type=["pdf", "docx", "png", "jpg", "jpeg"])
 
-# =====================================================================
-# STEP 1: Upload & Analyze
-# =====================================================================
-if st.session_state["step"] == "upload":
-    st.caption("Upload a resume to extract structured data and get role recommendations.")
+if uploaded_file is not None:
+    file_bytes = uploaded_file.getvalue()
+    file_hash = hashlib.md5(file_bytes).hexdigest()
 
-    uploaded_file = st.file_uploader("Upload a resume", type=["pdf", "docx", "png", "jpg", "jpeg"])
+    force_reanalyze = st.button("🔄 Re-analyze (ignore cache)")
 
-    if uploaded_file is not None:
-        file_bytes = uploaded_file.getvalue()
-        file_hash = hashlib.md5(file_bytes).hexdigest()
+    if force_reanalyze or st.session_state.get("resume_file_hash") != file_hash:
+        suffix = Path(uploaded_file.name).suffix
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+            tmp_file.write(file_bytes)
+            tmp_path = tmp_file.name
 
-        force_reanalyze = st.button("🔄 Re-analyze (ignore cache)")
+        with st.spinner("Extracting text..."):
+            try:
+                raw_text = extract_resume_text(tmp_path)
+            except Exception as e:
+                st.error(f"Text extraction failed: {e}")
+                st.stop()
+            finally:
+                if os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        pass
 
-        if force_reanalyze or st.session_state["resume_file_hash"] != file_hash:
-            suffix = Path(uploaded_file.name).suffix
-            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-                tmp_file.write(file_bytes)
-                tmp_path = tmp_file.name
+        with st.spinner("Analyzing resume (Gemini + rule-based)..."):
+            data = get_resume_data_combined(raw_text)
 
-            with st.spinner("Extracting text..."):
+        st.session_state["resume_file_hash"] = file_hash
+        st.session_state["raw_text"] = raw_text
+        st.session_state["data"] = data
+    else:
+        data = st.session_state["data"]
+        st.caption("💾 Using cached extraction from this session (same file).")
+
+    if data.get("extraction_method") == "rule_based":
+        st.warning("⚠️ AI extraction unavailable — showing rule-based results (may be less accurate).")
+    else:
+        st.success("✅ Extracted with Gemini")
+
+    st.divider()
+
+    # =========================================================================
+    # 1. Personal Information
+    # =========================================================================
+    st.subheader("👤 Personal Information")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write(f"**Name:** {data.get('name') or 'Not found'}")
+        st.write(f"**Email:** {data.get('email') or 'Not found'}")
+    with col2:
+        st.write(f"**Phone:** {data.get('phone') or 'Not found'}")
+        st.write(f"**Location:** {data.get('location') or 'Not found'}")
+
+    links = data.get("links") or {}
+    if isinstance(links, dict):
+        link_items = []
+        for k, v in links.items():
+            if v and isinstance(v, str):
+                link_items.append(f"[{k.capitalize()}]({v})")
+        if link_items:
+            st.write(f"**Links:** {' | '.join(link_items)}")
+
+    st.divider()
+
+    # =========================================================================
+    # 2. Professional Summary
+    # =========================================================================
+    st.subheader("📝 Professional Summary")
+    summary = data.get("summary")
+    if summary:
+        st.write(summary)
+    else:
+        st.info("No professional summary found.")
+
+    st.divider()
+
+    # =========================================================================
+    # 3. Skills
+    # =========================================================================
+    st.subheader("🛠️ Skills")
+    skills = data.get("skills") or []
+    if skills:
+        st.write(", ".join(f"`{s}`" for s in skills))
+    else:
+        st.info("No skills detected.")
+
+    with st.expander("Skill source breakdown"):
+        col_llm, col_rule = st.columns(2)
+        with col_llm:
+            st.write("**Gemini LLM Skills:**")
+            llm_skills = data.get("llm_skills") or []
+            if llm_skills:
+                for s in llm_skills:
+                    st.write(f"- {s}")
+            else:
+                st.write("_None_")
+        with col_rule:
+            st.write("**Rule-based Skills:**")
+            rule_skills = data.get("rule_based_skills") or []
+            if rule_skills:
+                for s in rule_skills:
+                    st.write(f"- {s}")
+            else:
+                st.write("_None_")
+
+    st.divider()
+
+    # =========================================================================
+    # 4. Role Fit & Skill Gap
+    # =========================================================================
+    st.subheader("🎯 Role Fit & Skill Gap")
+    if skills:
+        analysis = analyze_roles(skills)
+        top_matches = analysis.get("top_matches") or []
+        best_fit_role = analysis.get("best_fit_role")
+
+        if top_matches:
+            st.write("**Top Role Matches:**")
+            cols = st.columns(min(len(top_matches), 3))
+            for i, match in enumerate(top_matches[:3]):
+                with cols[i]:
+                    st.metric(label=match.get("role", "Role"), value=f"{match.get('match_percentage', 0)}%")
+
+        all_roles = list_all_roles()
+        default_index = 0
+        if best_fit_role and best_fit_role in all_roles:
+            default_index = all_roles.index(best_fit_role)
+
+        selected_role = st.selectbox(
+            "Select a role to view detailed skill breakdown:",
+            options=all_roles,
+            index=default_index,
+        )
+
+        if selected_role:
+            breakdown = get_role_breakdown(skills, selected_role)
+            if breakdown:
+                st.markdown(f"#### Skill Breakdown: **{selected_role}** ({breakdown.get('match_percentage', 0)}% match)")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.write("**✅ Core skills you have**")
+                    if breakdown.get("present_core_skills"):
+                        for s in breakdown["present_core_skills"]:
+                            st.write(f"- {s}")
+                    else:
+                        st.write("_None yet_")
+
+                    st.write("**✅ Nice-to-have skills you have**")
+                    if breakdown.get("present_nice_to_have_skills"):
+                        for s in breakdown["present_nice_to_have_skills"]:
+                            st.write(f"- {s}")
+                    else:
+                        st.write("_None yet_")
+
+                with col2:
+                    st.write("**❌ Core skills to build**")
+                    if breakdown.get("missing_core_skills"):
+                        for s in breakdown["missing_core_skills"]:
+                            st.write(f"- {s}")
+                    else:
+                        st.write("_You have them all!_")
+
+                    st.write("**➕ Nice-to-have skills to build**")
+                    if breakdown.get("missing_nice_to_have_skills"):
+                        for s in breakdown["missing_nice_to_have_skills"]:
+                            st.write(f"- {s}")
+                    else:
+                        st.write("_You have them all!_")
+
+                # Matching job openings
                 try:
-                    raw_text = extract_resume_text(tmp_path)
-                except Exception as e:
-                    st.error(f"Text extraction failed: {e}")
-                    st.stop()
-
-            with st.spinner("Analyzing resume (Gemini + rule-based)..."):
-                data = get_resume_data_combined(raw_text)
-
-            st.session_state["resume_file_hash"] = file_hash
-            st.session_state["raw_text"] = raw_text
-            st.session_state["data"] = data
-            st.session_state["selected_role"] = None  # new resume, clear any prior role pick
-        else:
-            data = st.session_state["data"]
-            st.caption("💾 Using cached extraction from this session (same file).")
-
-        if data["extraction_method"] == "rule_based":
-            st.warning("⚠️ AI extraction unavailable — showing rule-based results (may be less accurate).")
-        else:
-            st.success("✅ Extracted with Gemini")
-
-        # --- Quick summary ---
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Name", data.get("name") or "Not found")
-            st.metric("Email", data.get("email") or "Not found")
-        with col2:
-            st.metric("Phone", data.get("phone") or "Not found")
-            st.metric("Skills found", len(data.get("skills") or []))
-
-        with st.expander("View full extracted data"):
-            st.json(data)
-            st.download_button(
-                "Download full extraction (.json)",
-                data=json.dumps(data, indent=2),
-                file_name="resume_data.json",
-                mime="application/json",
-            )
-
-        if data.get("skills"):
-            st.divider()
-            if st.button("➡️ Continue to Role Recommendations", type="primary"):
-                go_to("role_select")
-                st.rerun()
-        else:
-            st.info("No skills were extracted — role matching needs at least some skills to work with.")
+                    jobs = search_jobs(keywords=selected_role, location="India", country_code="in")
+                    ranked = rank_jobs(jobs, skills)
+                    if ranked:
+                        st.divider()
+                        st.write(f"**💼 Matching Job Openings for {selected_role}:**")
+                        for job in ranked:
+                            st.write(f"**{job.get('title', 'Untitled role')}** — {job.get('company', 'Unknown company')} ({job.get('match_score', 0)}% match)")
+                            if job.get("apply_url"):
+                                st.write(f"[Apply here]({job['apply_url']})")
+                except Exception:
+                    pass
     else:
-        st.info("Upload a resume file to get started (PDF, DOCX, or image).")
-
-
-# =====================================================================
-# STEP 2: Role Recommendations
-# =====================================================================
-elif st.session_state["step"] == "role_select":
-    data = st.session_state["data"]
-    st.caption(f"Based on **{data.get('name') or 'this resume'}**'s skills, here's what fits best.")
-
-    analysis = analyze_roles(data["skills"])
-
-    st.subheader("🏆 Best matches")
-    for match in analysis["top_matches"]:
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.write(f"**{match['role']}** — {match['match_percentage']}% match")
-        with col2:
-            if st.button("View gap", key=f"top_{match['role']}"):
-                st.session_state["selected_role"] = match["role"]
-                go_to("skill_gap")
-                st.rerun()
+        st.info("No skills were extracted — role matching needs at least some skills to work with.")
 
     st.divider()
-    st.subheader("🔍 Or explore any other role")
-    all_roles = list_all_roles()
-    manual_role = st.selectbox("Pick a role to check your fit for", all_roles)
-    if st.button("View gap for this role"):
-        st.session_state["selected_role"] = manual_role
-        go_to("skill_gap")
-        st.rerun()
+
+    # =========================================================================
+    # 5. Experience
+    # =========================================================================
+    st.subheader("💼 Work Experience")
+    experience = data.get("experience") or []
+    if experience:
+        for exp in experience:
+            if isinstance(exp, dict):
+                title = exp.get("title") or "Position"
+                company = exp.get("company")
+                dates = []
+                if exp.get("start_date"):
+                    dates.append(str(exp["start_date"]))
+                if exp.get("end_date"):
+                    dates.append(str(exp["end_date"]))
+                date_str = " - ".join(dates) if dates else ""
+                loc = exp.get("location")
+
+                header_parts = [f"**{title}**"]
+                if company:
+                    header_parts.append(f"at **{company}**")
+                if date_str:
+                    header_parts.append(f"({date_str})")
+                if loc:
+                    header_parts.append(f"| {loc}")
+
+                st.markdown(" ".join(header_parts))
+
+                desc = exp.get("description") or []
+                if isinstance(desc, list):
+                    for bullet in desc:
+                        st.write(f"- {bullet}")
+                elif isinstance(desc, str) and desc.strip():
+                    st.write(desc)
+            elif isinstance(exp, str):
+                st.write(f"- {exp}")
+    else:
+        st.info("No work experience found.")
 
     st.divider()
+
+    # =========================================================================
+    # 6. Education
+    # =========================================================================
+    st.subheader("🎓 Education")
+    education = data.get("education") or []
+    if education:
+        for edu in education:
+            if isinstance(edu, dict):
+                if edu.get("raw_text"):
+                    st.write(f"- {edu['raw_text']}")
+                else:
+                    degree = edu.get("degree") or "Degree"
+                    inst = edu.get("institution")
+                    field = edu.get("field")
+                    grad_date = edu.get("graduation_date")
+                    gpa = edu.get("gpa")
+
+                    parts = [f"**{degree}**"]
+                    if field:
+                        parts.append(f"in {field}")
+                    if inst:
+                        parts.append(f"— {inst}")
+                    if grad_date:
+                        parts.append(f"({grad_date})")
+                    if gpa:
+                        parts.append(f"| GPA: {gpa}")
+                    st.markdown(" ".join(parts))
+            elif isinstance(edu, str):
+                st.write(f"- {edu}")
+    else:
+        st.info("No education details found.")
+
+    st.divider()
+
+    # =========================================================================
+    # 7. Projects
+    # =========================================================================
+    st.subheader("🚀 Projects")
+    projects = data.get("projects") or []
+    if projects:
+        for proj in projects:
+            if isinstance(proj, dict):
+                title = proj.get("title") or "Project"
+                link = proj.get("link")
+                tech_stack = proj.get("tech_stack") or []
+
+                title_md = f"**{title}**"
+                if link:
+                    title_md += f" ([Link]({link}))"
+                st.markdown(title_md)
+
+                if tech_stack:
+                    if isinstance(tech_stack, list):
+                        st.caption(f"Technologies: {', '.join(str(t) for t in tech_stack)}")
+                    elif isinstance(tech_stack, str):
+                        st.caption(f"Technologies: {tech_stack}")
+
+                desc = proj.get("description") or []
+                if isinstance(desc, list):
+                    for bullet in desc:
+                        st.write(f"- {bullet}")
+                elif isinstance(desc, str) and desc.strip():
+                    st.write(desc)
+            elif isinstance(proj, str):
+                st.write(f"- {proj}")
+    else:
+        st.info("No projects found.")
+
+    st.divider()
+
+    # =========================================================================
+    # 8. Certifications & Achievements
+    # =========================================================================
+    st.subheader("📜 Certifications & Achievements")
+    certifications = data.get("certifications") or []
+    achievements = data.get("achievements") or []
+
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("⬅️ Back to resume"):
-            go_to("upload")
-            st.rerun()
+        st.write("**Certifications:**")
+        if certifications:
+            for cert in certifications:
+                st.write(f"- {cert}")
+        else:
+            st.write("_None found_")
     with col2:
-        if st.button("🔁 Start over with a new resume"):
-            reset_all()
-            st.rerun()
-
-
-# =====================================================================
-# STEP 3: Skill Gap Detail
-# =====================================================================
-elif st.session_state["step"] == "skill_gap":
-    data = st.session_state["data"]
-    role = st.session_state["selected_role"]
-
-    breakdown = get_role_breakdown(data["skills"], role)
-
-    if breakdown is None:
-        st.error("Something went wrong — that role wasn't found. Please go back and pick again.")
-    else:
-        st.subheader(f"🎯 {role} — {breakdown['match_percentage']}% match")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("**✅ Core skills you have**")
-            if breakdown["present_core_skills"]:
-                for s in breakdown["present_core_skills"]:
-                    st.write(f"- {s}")
-            else:
-                st.write("_None yet_")
-
-            st.write("**✅ Nice-to-have skills you have**")
-            if breakdown["present_nice_to_have_skills"]:
-                for s in breakdown["present_nice_to_have_skills"]:
-                    st.write(f"- {s}")
-            else:
-                st.write("_None yet_")
-
-        with col2:
-            st.write("**❌ Core skills to build**")
-            if breakdown["missing_core_skills"]:
-                for s in breakdown["missing_core_skills"]:
-                    st.write(f"- {s}")
-            else:
-                st.write("_You have them all!_")
-
-            st.write("**➕ Nice-to-have skills to build**")
-            if breakdown["missing_nice_to_have_skills"]:
-                for s in breakdown["missing_nice_to_have_skills"]:
-                    st.write(f"- {s}")
-            else:
-                st.write("_You have them all!_")
+        st.write("**Achievements:**")
+        if achievements:
+            for ach in achievements:
+                st.write(f"- {ach}")
+        else:
+            st.write("_None found_")
 
     st.divider()
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("⬅️ Back to role list"):
-            go_to("role_select")
-            st.rerun()
-    with col2:
-        if st.button("🔁 Start over with a new resume"):
-            reset_all()
-            st.rerun()
 
-
-
-    jobs = search_jobs(keywords=role, location="India", country_code="in")
-    ranked = rank_jobs(jobs, data["skills"])
-
-    for job in ranked:
-        st.write(f"**{job['title']}** — {job['company']} ({job['match_score']}% match)")
-        st.write(f"[Apply here]({job['apply_url']})")
+    # =========================================================================
+    # 9. Raw JSON expander + Download
+    # =========================================================================
+    with st.expander("View full extracted data (JSON)"):
+        st.json(data)
+        st.download_button(
+            "Download full extraction (.json)",
+            data=json.dumps(data, indent=2),
+            file_name="resume_data.json",
+            mime="application/json",
+        )
+else:
+    st.info("Upload a resume file to get started (PDF, DOCX, or image).")
