@@ -93,10 +93,12 @@ ADZUNA_API_KEY=your_adzuna_api_key_here
 
 ## 🚀 Running the App
 
-Launch the Streamlit web application:
+The project is built as an editable package using `uv`, meaning the internal folders (`parser`, `skills_gap`, `keywords`) are globally importable within the project environment. 
+
+To ensure the environment and absolute imports work correctly, **always run the app from the root `Job_finder` directory** (do not `cd` into `parser/`).
 
 ```bash
-streamlit run parser/app.py
+uv run streamlit run parser/app.py
 ```
 
 ---
