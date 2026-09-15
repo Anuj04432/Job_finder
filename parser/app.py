@@ -22,6 +22,7 @@ import streamlit as st
 from extract_resume_text import extract_resume_text
 from extract_resume_fallback import get_resume_data_combined
 from job_search import search_jobs, rank_jobs
+from skill_resources import get_resources_for_skills
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, ".."))
@@ -209,6 +210,15 @@ if uploaded_file is not None:
                             st.write(f"- {s}")
                     else:
                         st.write("_You have them all!_")
+
+                missing_skills = (breakdown.get("missing_core_skills") or []) + (breakdown.get("missing_nice_to_have_skills") or [])
+                if missing_skills:
+                    st.write("#### 📚 Resources to close the gap")
+                    resources_dict = get_resources_for_skills(missing_skills)
+                    for skill_name, resources in resources_dict.items():
+                        st.write(f"**{skill_name.title()}**")
+                        for res in resources:
+                            st.markdown(f"- [{res['title']}]({res['url']}) ({res['platform']})")
 
                 # Matching job openings
                 try:
