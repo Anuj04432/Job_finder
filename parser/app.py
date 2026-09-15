@@ -24,8 +24,7 @@ from extract_resume_fallback import get_resume_data_combined
 from job_search import search_jobs, rank_jobs
 from skill_resources import get_resources_for_skills
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(BASE_DIR, ".."))
+
 from skills_gap.skills_gap import analyze_roles, list_all_roles, get_role_breakdown
 
 
